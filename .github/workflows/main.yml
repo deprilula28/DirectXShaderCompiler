@@ -77,16 +77,6 @@ jobs:
             CC: clang
             CXX: clang++
             CMAKE_OPTS: "-DLLVM_ENABLE_WERROR=On -DLLVM_USE_LINKER=lld"
-          - os: ubuntu-latest
-            name: Linux_Gcc_Release
-            configuration: Release
-            CC: gcc-9
-            CXX: g++-9
-          - os: ubuntu-latest
-            name: Linux_Gcc_Debug
-            configuration: Debug
-            CC: gcc-9
-            CXX: g++-9
           - os: macos-latest
             name: MacOS_Clang_Release
             configuration: Release
@@ -123,7 +113,7 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod u+x llvm.sh
           sudo ./llvm.sh 18
-          sudo apt-get install -y libc++-18-dev
+          sudo apt-get install -y libc++-18-dev 
 
       - name: Install dependencies on macOS
         if: ${{ matrix.os == 'macos-latest' }}
