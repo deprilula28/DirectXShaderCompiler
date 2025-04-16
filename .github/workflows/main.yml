@@ -15,6 +15,7 @@ jobs:
       HLSL_SRC_DIR: ${{ github.workspace }}
       HLSL_BLD_DIR: "${{ github.workspace }}\\build"
       platform: x64
+      os: windows-latest
       COMMIT_SHA: ${{ github.event.inputs.COMMIT_SHA }}
     strategy:
       matrix:
@@ -47,7 +48,7 @@ jobs:
       - name: Upload Installed Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.COMMIT_SHA }}-${{ matrix.configuration }}-${{ env.platform }}
+          name: ${{ env.os }}-${{ matrix.configuration }}-${{ github.event.inputs.COMMIT_SHA }}
           path: ${{ github.event.inputs.COMMIT_SHA }}.zip
 
   nix:
@@ -139,5 +140,5 @@ jobs:
       - name: Upload Installed Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.COMMIT_SHA }}-${{ matrix.configuration }}-${{ env.platform }}
+          name: ${{ matrix.os }}-${{ matrix.configuration }}-${{ github.event.inputs.COMMIT_SHA }}
           path: ${{ github.event.inputs.COMMIT_SHA }}.tar.gz
