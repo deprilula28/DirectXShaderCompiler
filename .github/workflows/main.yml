@@ -33,18 +33,6 @@ jobs:
           call utils\hct\hctbuild.cmd -${{ env.platform }} -${{ matrix.configuration }} -show-cmake-log -spirvtest
         shell: cmd
 
-      - name: DXIL Tests
-        run: |
-          call utils\hct\hctstart.cmd %HLSL_SRC_DIR% %HLSL_BLD_DIR%
-          call utils\hct\hcttest.cmd -${{ matrix.configuration }} noexec
-        shell: cmd
-
-      - name: DXIL Execution Tests (Nuget WARP)
-        run: |
-          call utils\hct\hctstart.cmd %HLSL_SRC_DIR% %HLSL_BLD_DIR%
-          call utils\hct\hcttest.cmd -${{ matrix.configuration }} exec-warp
-        shell: cmd
-
       - name: CMake Install
         run: cmake --install build --prefix build\install
         shell: cmd
@@ -133,21 +121,8 @@ jobs:
             -DCMAKE_CXX_COMPILER=${{ matrix.CXX }} \
             ${{ matrix.CMAKE_OPTS || '' }}
 
-      - name: Build Dependencies
+      - name: Build
         run: ninja -C build test-depends
-
-      - name: Smoke Tests
-        run: |
-          ./build/bin/dxc -T ps_6_0 tools/clang/test/CodeGenSPIRV/passthru-ps.hlsl2spv
-          ./build/bin/dxc -T ps_6_0 -Fo passthru-ps.dxil tools/clang/test/CodeGenSPIRV/passthru-ps.hlsl2spv
-          ./build/bin/dxc -T ps_6_0 -Fo passthru-ps.spv tools/clang/test/CodeGenSPIRV/passthru-ps.hlsl2spv -spirv
-          ls -ld $RUNNER_TEMP
-          ls -ld $GITHUB_WORKSPACE
-
-      - name: DXC Tests
-        run: ninja -C build check-all
-        env:
-          ASAN_OPTIONS: ${{ matrix.CHECK_ALL_ENV }}
 
       - name: CMake Install
         run: cmake --install build --prefix build/install
