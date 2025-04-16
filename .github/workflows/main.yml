@@ -1,4 +1,4 @@
-name: CI
+name: Devsh - Build & Deploy DXCompiler
 
 on:
   workflow_dispatch:
