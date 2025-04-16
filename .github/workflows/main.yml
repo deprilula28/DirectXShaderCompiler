@@ -33,12 +33,15 @@ jobs:
           call utils\hct\hctbuild.cmd -${{ env.platform }} -${{ matrix.configuration }} -show-cmake-log -spirvtest
         shell: cmd
 
-      - name: CMake Install
-        run: cmake --install build --prefix build\install
+      - name: CMake Install DXCompiler
+        run: |
+          cmake --install build/include/dxc --prefix build/install --config ${{ matrix.configuration }}
+          cmake --install build/tools/clang/tools/dxcompiler --prefix build/install --config ${{ matrix.configuration }}
+          cmake -E copy include/dxc/WinAdapter.h build/install/include/dxc/
         shell: cmd
 
       - name: Archive Installed Directory
-        run: tar -a -c -f ${{ github.event.inputs.COMMIT_SHA }}.zip build\install
+        run: cmake -E tar czf ${{ github.event.inputs.COMMIT_SHA }}.tar.gz build/install
         shell: cmd
 
       - name: Upload Installed Artifact
@@ -124,11 +127,14 @@ jobs:
       - name: Build
         run: ninja -C build test-depends
 
-      - name: CMake Install
-        run: cmake --install build --prefix build/install
+      - name: CMake Install DXCompiler
+        run: | 
+          cmake --install build/include/dxc --prefix build/install --config ${{ matrix.configuration }}
+          cmake --install build/tools/clang/tools/dxcompiler --prefix build/install --config ${{ matrix.configuration }}
+          cmake -E copy include/dxc/WinAdapter.h build/install/include/dxc/
 
       - name: Archive Installed Directory
-        run: tar -czf ${{ github.event.inputs.COMMIT_SHA }}.tar.gz build/install
+        run: cmake -E tar czf ${{ github.event.inputs.COMMIT_SHA }}.tar.gz build/install
 
       - name: Upload Installed Artifact
         uses: actions/upload-artifact@v4
