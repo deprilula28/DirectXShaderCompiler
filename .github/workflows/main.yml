@@ -49,7 +49,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.os }}-${{ matrix.configuration }}-${{ github.event.inputs.COMMIT_SHA }}
-          path: ${{ github.event.inputs.COMMIT_SHA }}.zip
+          path: ${{ github.event.inputs.COMMIT_SHA }}.tar.gz
 
   nix:
     name: Unix and macOS Build
