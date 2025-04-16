@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      COMMIT_SHA:
+        description: 'Commit SHA to build'
+        required: true
+
+jobs:
+  windows:
+    name: Windows Build
+    runs-on: windows-2022
+    env:
+      HLSL_SRC_DIR: ${{ github.workspace }}
+      HLSL_BLD_DIR: "${{ github.workspace }}\build"
+      platform: x64
+      COMMIT_SHA: ${{ github.event.inputs.COMMIT_SHA }}
+    strategy:
+      matrix:
+        configuration: [Release, Debug]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.COMMIT_SHA }}
+          clean: true
+          submodules: true
+
+      - name: Build
+        run: |
+          call utils\hct\hctstart.cmd %HLSL_SRC_DIR% %HLSL_BLD_DIR%
+          call utils\hct\hctbuild.cmd -%platform% -%configuration% -show-cmake-log -spirvtest
+        shell: cmd
+
+      - name: DXIL Tests
+        run: |
+          call utils\hct\hctstart.cmd %HLSL_SRC_DIR% %HLSL_BLD_DIR%
+          call utils\hct\hcttest.cmd -%configuration% noexec
+        shell: cmd
+
+      - name: DXIL Execution Tests (Nuget WARP)
+        run: |
+          call utils\hct\hctstart.cmd %HLSL_SRC_DIR% %HLSL_BLD_DIR%
+          call utils\hct\hcttest.cmd -%configuration% exec-warp
+        shell: cmd
+
+      - name: CMake Install
+        run: cmake --install build --prefix build\install
+        shell: cmd
+
+      - name: Archive Installed Directory
+        run: tar -a -c -f ${{ github.event.inputs.COMMIT_SHA }}.zip build\install
+        shell: cmd
+
+      - name: Upload Installed Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ github.event.inputs.COMMIT_SHA }}-${{ matrix.configuration }}-${{ env.platform }}
+          path: ${{ github.event.inputs.COMMIT_SHA }}.zip
+
+  nix:
+    name: Unix and macOS Build
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: Linux_Clang_Release
+            configuration: Release
+            CC: clang-18
+            CXX: clang++-18
+            CMAKE_OPTS: "-DLLVM_ENABLE_WERROR=On -DLLVM_USE_SANITIZER='Address;Undefined' -DLLVM_ENABLE_LIBCXX=On -DLLVM_USE_LINKER=lld"
+            CHECK_ALL_ENV: "ASAN_OPTIONS=alloc_dealloc_mismatch=0"
+          - os: ubuntu-latest
+            name: Linux_Clang_Debug
+            configuration: Debug
+            CC: clang
+            CXX: clang++
+            CMAKE_OPTS: "-DLLVM_ENABLE_WERROR=On -DLLVM_USE_LINKER=lld"
+          - os: ubuntu-latest
+            name: Linux_Gcc_Release
+            configuration: Release
+            CC: gcc-9
+            CXX: g++-9
+          - os: ubuntu-latest
+            name: Linux_Gcc_Debug
+            configuration: Debug
+            CC: gcc-9
+            CXX: g++-9
+          - os: macos-latest
+            name: MacOS_Clang_Release
+            configuration: Release
+            CC: clang
+            CXX: clang++
+            CMAKE_OPTS: "-DLLVM_ENABLE_WERROR=On"
+          - os: macos-latest
+            name: MacOS_Clang_Debug
+            configuration: Debug
+            CC: clang
+            CXX: clang++
+            CMAKE_OPTS: "-DLLVM_ENABLE_WERROR=On"
+    runs-on: ${{ matrix.os }}
+    env:
+      COMMIT_SHA: ${{ github.event.inputs.COMMIT_SHA }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.COMMIT_SHA }}
+          clean: true
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies on Linux
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+          wget https://apt.llvm.org/llvm.sh
+          chmod u+x llvm.sh
+          sudo ./llvm.sh 18
+          sudo apt-get install -y libc++-18-dev
+
+      - name: Install dependencies on macOS
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          brew update
+          brew install ninja
+          ulimit -Sn 1024
+
+      - name: Configure with CMake
+        run: |
+          cmake -B build -G Ninja $GITHUB_WORKSPACE \
+            -DLLVM_LIT_ARGS="-v --xunit-xml-output=testresults.xunit.xml" \
+            -C $GITHUB_WORKSPACE/cmake/caches/PredefinedParams.cmake \
+            -DSPIRV_BUILD_TESTS=ON \
+            -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} \
+            -DCMAKE_C_COMPILER=${{ matrix.CC }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.CXX }} \
+            ${{ matrix.CMAKE_OPTS || '' }}
+
+      - name: Build Dependencies
+        run: ninja -C build test-depends
+
+      - name: Smoke Tests
+        run: |
+          ./build/bin/dxc -T ps_6_0 tools/clang/test/CodeGenSPIRV/passthru-ps.hlsl2spv
+          ./build/bin/dxc -T ps_6_0 -Fo passthru-ps.dxil tools/clang/test/CodeGenSPIRV/passthru-ps.hlsl2spv
+          ./build/bin/dxc -T ps_6_0 -Fo passthru-ps.spv tools/clang/test/CodeGenSPIRV/passthru-ps.hlsl2spv -spirv
+          ls -ld $RUNNER_TEMP
+          ls -ld $GITHUB_WORKSPACE
+
+      - name: DXC Tests
+        run: ninja -C build check-all
+        env:
+          ASAN_OPTIONS: ${{ matrix.CHECK_ALL_ENV }}
+
+      - name: CMake Install
+        run: cmake --install build --prefix build/install
+
+      - name: Archive Installed Directory
+        run: tar -czf ${{ github.event.inputs.COMMIT_SHA }}.tar.gz build/install
+
+      - name: Upload Installed Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ github.event.inputs.COMMIT_SHA }}-${{ matrix.configuration }}-${{ env.platform }}
+          path: ${{ github.event.inputs.COMMIT_SHA }}.tar.gz
