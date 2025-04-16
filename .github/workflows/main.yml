@@ -54,7 +54,7 @@ jobs:
         shell: cmd
 
       - name: Upload Installed Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.inputs.COMMIT_SHA }}-${{ matrix.configuration }}-${{ env.platform }}
           path: ${{ github.event.inputs.COMMIT_SHA }}.zip
@@ -166,7 +166,7 @@ jobs:
         run: tar -czf ${{ github.event.inputs.COMMIT_SHA }}.tar.gz build/install
 
       - name: Upload Installed Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.inputs.COMMIT_SHA }}-${{ matrix.configuration }}-${{ env.platform }}
           path: ${{ github.event.inputs.COMMIT_SHA }}.tar.gz
