@@ -30,19 +30,19 @@ jobs:
       - name: Build
         run: |
           call utils\hct\hctstart.cmd %HLSL_SRC_DIR% %HLSL_BLD_DIR%
-          call utils\hct\hctbuild.cmd -%platform% -%configuration% -show-cmake-log -spirvtest
+          call utils\hct\hctbuild.cmd -${{ env.platform }} -${{ matrix.configuration }} -show-cmake-log -spirvtest
         shell: cmd
 
       - name: DXIL Tests
         run: |
           call utils\hct\hctstart.cmd %HLSL_SRC_DIR% %HLSL_BLD_DIR%
-          call utils\hct\hcttest.cmd -%configuration% noexec
+          call utils\hct\hcttest.cmd -${{ matrix.configuration }} noexec
         shell: cmd
 
       - name: DXIL Execution Tests (Nuget WARP)
         run: |
           call utils\hct\hctstart.cmd %HLSL_SRC_DIR% %HLSL_BLD_DIR%
-          call utils\hct\hcttest.cmd -%configuration% exec-warp
+          call utils\hct\hcttest.cmd -${{ matrix.configuration }} exec-warp
         shell: cmd
 
       - name: CMake Install
