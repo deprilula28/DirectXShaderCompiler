@@ -13,7 +13,7 @@ jobs:
     runs-on: windows-2022
     env:
       HLSL_SRC_DIR: ${{ github.workspace }}
-      HLSL_BLD_DIR: "${{ github.workspace }}\build"
+      HLSL_BLD_DIR: "${{ github.workspace }}\\build"
       platform: x64
       COMMIT_SHA: ${{ github.event.inputs.COMMIT_SHA }}
     strategy:
